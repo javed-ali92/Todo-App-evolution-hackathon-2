@@ -1,0 +1,387 @@
+openapi: 3.0.0
+info:
+  title: Todo App API
+  description: API specification for the Todo application
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.todoapp.com
+    description: Production server
+
+paths:
+  /api/{user_id}/tasks:
+    get:
+      summary: Get all tasks for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user whose tasks to retrieve
+        - name: completed
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by completion status
+        - name: priority
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [low, medium, high]
+          description: Filter by priority level
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by tag
+        - name: skip
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 100
+          description: Maximum number of records to return
+      responses:
+        '200':
+          description: Successfully retrieved tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user cannot access this resource
+        '404':
+          description: User not found
+      security:
+        - bearerAuth: []
+
+    post:
+      summary: Create a new task for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user creating the task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Bad request - invalid input data
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user cannot access this resource
+      security:
+        - bearerAuth: []
+
+  /api/{user_id}/tasks/{task_id}:
+    get:
+      summary: Get a specific task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to retrieve
+      responses:
+        '200':
+          description: Successfully retrieved task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user cannot access this resource
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+    put:
+      summary: Update a specific task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Bad request - invalid input data
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user cannot access this resource
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+    delete:
+      summary: Delete a specific task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to delete
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Task deleted successfully"
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user cannot access this resource
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+  /api/{user_id}/tasks/{task_id}/complete:
+    patch:
+      summary: Toggle task completion status
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the task to toggle
+      responses:
+        '200':
+          description: Task completion status toggled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user cannot access this resource
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - completed
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the task
+        user_id:
+          type: string
+          description: ID of the user who owns the task
+        title:
+          type: string
+          description: Title of the task
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          description: Detailed description of the task
+          nullable: true
+        due_date:
+          type: string
+          format: date-time
+          description: Due date for the task
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: Priority level of the task
+          default: medium
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with the task
+          nullable: true
+        recursion_pattern:
+          type: string
+          description: Recurrence pattern for the task
+          nullable: true
+          maxLength: 100
+        completed:
+          type: boolean
+          description: Whether the task is completed
+          default: false
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the task was created
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the task was last updated
+
+    TaskCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: Title of the task
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          description: Detailed description of the task
+          nullable: true
+        due_date:
+          type: string
+          format: date-time
+          description: Due date for the task
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: Priority level of the task
+          default: medium
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with the task
+          nullable: true
+        recursion_pattern:
+          type: string
+          description: Recurrence pattern for the task
+          nullable: true
+          maxLength: 100
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Title of the task
+          minLength: 1
+          maxLength: 255
+          nullable: true
+        description:
+          type: string
+          description: Detailed description of the task
+          nullable: true
+        due_date:
+          type: string
+          format: date-time
+          description: Due date for the task
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: Priority level of the task
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with the task
+          nullable: true
+        recursion_pattern:
+          type: string
+          description: Recurrence pattern for the task
+          nullable: true
+          maxLength: 100
+        completed:
+          type: boolean
+          description: Whether the task is completed
+          nullable: true
+
+security:
+  - bearerAuth: []

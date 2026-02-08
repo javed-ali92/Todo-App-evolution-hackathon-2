@@ -1,0 +1,528 @@
+openapi: 3.0.3
+info:
+  title: Todo API
+  description: API for managing todos with authentication
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api
+    description: Development server
+  - url: https://your-deployment-url/api
+    description: Production server
+paths:
+  /auth/register:
+    post:
+      tags:
+        - auth
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '200':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                password:
+                  type: string
+                  format: password
+                  description: User's password
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: JWT access token
+                  token_type:
+                    type: string
+                    description: Type of token (always "bearer")
+        '401':
+          description: Unauthorized - incorrect credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/me:
+    get:
+      tags:
+        - auth
+      summary: Get current user info
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          description: Unauthorized - invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Logout user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Successfully logged out"
+  /{user_id}/tasks:
+    get:
+      tags:
+        - tasks
+      summary: Get all tasks for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user whose tasks to retrieve
+          schema:
+            type: integer
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of user's tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskRead'
+        '401':
+          description: Unauthorized - invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user ID in token doesn't match URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found - user doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - tasks
+      summary: Create a new task for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user to create task for
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRead'
+        '401':
+          description: Unauthorized - invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user ID in token doesn't match URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Unprocessable entity - invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /{user_id}/tasks/{id}:
+    get:
+      tags:
+        - tasks
+      summary: Get a specific task for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          description: ID of the task to retrieve
+          schema:
+            type: integer
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRead'
+        '401':
+          description: Unauthorized - invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user ID in token doesn't match URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found - task doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - tasks
+      summary: Update a specific task for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          description: ID of the task to update
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRead'
+        '401':
+          description: Unauthorized - invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user ID in token doesn't match URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found - task doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Unprocessable entity - invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - tasks
+      summary: Delete a specific task for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          description: ID of the task to delete
+          schema:
+            type: integer
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Task deleted successfully"
+        '401':
+          description: Unauthorized - invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user ID in token doesn't match URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found - task doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /{user_id}/tasks/{id}/complete:
+    patch:
+      tags:
+        - tasks
+      summary: Toggle the completion status of a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          description: ID of the task to toggle
+          schema:
+            type: integer
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Task completion status toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRead'
+        '401':
+          description: Unauthorized - invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user ID in token doesn't match URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found - task doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UserCreate:
+      type: object
+      required:
+        - email
+        - password
+        - first_name
+        - last_name
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "securepassword123"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+    UserRead:
+      type: object
+      required:
+        - id
+        - email
+        - first_name
+        - last_name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+    TaskCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          example: "Buy groceries"
+        description:
+          type: string
+          example: "Milk, eggs, bread"
+        completed:
+          type: boolean
+          default: false
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Buy groceries"
+        description:
+          type: string
+          example: "Milk, eggs, bread, fruits"
+        completed:
+          type: boolean
+          example: true
+    TaskRead:
+      type: object
+      required:
+        - id
+        - title
+        - completed
+        - owner_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Buy groceries"
+        description:
+          type: string
+          example: "Milk, eggs, bread"
+        completed:
+          type: boolean
+          example: false
+        owner_id:
+          type: integer
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00Z"
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          example: "An error occurred"

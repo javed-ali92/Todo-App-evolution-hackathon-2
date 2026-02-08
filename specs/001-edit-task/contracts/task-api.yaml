@@ -1,0 +1,326 @@
+openapi: 3.0.3
+info:
+  title: Todo App - Task Update API
+  description: API contract for updating existing tasks in the Todo application
+  version: 1.0.0
+  contact:
+    name: Todo App Team
+
+servers:
+  - url: http://localhost:8001/api
+    description: Local development server
+  - url: http://localhost:3000/api
+    description: Frontend proxy (Next.js)
+
+paths:
+  /{user_id}/tasks/{task_id}:
+    get:
+      summary: Get a specific task
+      description: Retrieve a single task by ID. Used to fetch task data for editing.
+      operationId: getTaskById
+      tags:
+        - Tasks
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user who owns the task
+          schema:
+            type: integer
+            example: 25
+        - name: task_id
+          in: path
+          required: true
+          description: ID of the task to retrieve
+          schema:
+            type: integer
+            example: 5
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Task retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 5
+                title: "Complete project documentation"
+                description: "Write comprehensive docs for the Edit Task feature"
+                due_date: "2026-02-15T00:00:00"
+                priority: "High"
+                tags: "documentation, urgent"
+                recursion_pattern: null
+                completed: false
+                owner_id: 25
+                created_at: "2026-02-08T10:30:00"
+                updated_at: "2026-02-08T10:30:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update an existing task
+      description: |
+        Update one or more fields of an existing task. Only the task owner can update their tasks.
+        The backend validates that the authenticated user (from JWT token) matches the task owner.
+      operationId: updateTask
+      tags:
+        - Tasks
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID of the user who owns the task
+          schema:
+            type: integer
+            example: 25
+        - name: task_id
+          in: path
+          required: true
+          description: ID of the task to update
+          schema:
+            type: integer
+            example: 5
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        description: Task fields to update (all fields optional, only provided fields will be updated)
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+            examples:
+              updateTitle:
+                summary: Update only the title
+                value:
+                  title: "Updated task title"
+              updateMultipleFields:
+                summary: Update multiple fields
+                value:
+                  title: "Complete project documentation"
+                  description: "Updated description with more details"
+                  due_date: "2026-02-20"
+                  priority: "Medium"
+              markComplete:
+                summary: Mark task as completed
+                value:
+                  completed: true
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 5
+                title: "Complete project documentation"
+                description: "Updated description with more details"
+                due_date: "2026-02-20T00:00:00"
+                priority: "Medium"
+                tags: "documentation, urgent"
+                recursion_pattern: null
+                completed: false
+                owner_id: 25
+                created_at: "2026-02-08T10:30:00"
+                updated_at: "2026-02-09T14:22:00"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from login endpoint. Include in Authorization header as:
+        `Authorization: Bearer <token>`
+
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - title
+        - priority
+        - completed
+        - owner_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique task identifier
+          example: 5
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title/summary
+          example: "Complete project documentation"
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Detailed task description
+          example: "Write comprehensive docs for the Edit Task feature"
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Task deadline in ISO 8601 format
+          example: "2026-02-15T00:00:00"
+        priority:
+          type: string
+          enum: [High, Medium, Low]
+          description: Task priority level
+          example: "High"
+        tags:
+          type: string
+          nullable: true
+          description: Comma-separated tags
+          example: "documentation, urgent"
+        recursion_pattern:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Recurrence pattern (e.g., daily, weekly, monthly)
+          example: "weekly"
+        completed:
+          type: boolean
+          description: Task completion status
+          example: false
+        owner_id:
+          type: integer
+          description: ID of the user who owns this task
+          example: 25
+        created_at:
+          type: string
+          format: date-time
+          description: Task creation timestamp
+          example: "2026-02-08T10:30:00"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+          example: "2026-02-09T14:22:00"
+
+    TaskUpdate:
+      type: object
+      description: Fields to update (all optional, only provided fields will be updated)
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Updated task title
+          example: "Updated task title"
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Updated task description
+          example: "Updated description"
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: Updated due date (YYYY-MM-DD format)
+          example: "2026-02-20"
+        priority:
+          type: string
+          enum: [High, Medium, Low]
+          description: Updated priority level
+          example: "Medium"
+        tags:
+          type: string
+          nullable: true
+          description: Updated comma-separated tags
+          example: "work, important"
+        recursion_pattern:
+          type: string
+          nullable: true
+          maxLength: 100
+          description: Updated recurrence pattern
+          example: "daily"
+        completed:
+          type: boolean
+          description: Updated completion status
+          example: true
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message describing what went wrong
+          example: "Not authorized to access this user's tasks"
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidTitle:
+              summary: Title validation error
+              value:
+                detail: "Title is required and cannot be empty"
+            invalidPriority:
+              summary: Priority validation error
+              value:
+                detail: "Priority must be one of: High, Medium, Low"
+
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: "Could not validate credentials"
+
+    Forbidden:
+      description: User does not have permission to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notOwner:
+              summary: User does not own the task
+              value:
+                detail: "Not authorized to access this user's tasks"
+            userIdMismatch:
+              summary: Token user_id doesn't match URL user_id
+              value:
+                detail: "Not authorized to access this user's tasks"
+
+    NotFound:
+      description: Task not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: "Task not found"
+
+security:
+  - BearerAuth: []

@@ -62,12 +62,14 @@ description: "Task list template for feature implementation"
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
+- [ ] T004 Setup database schema and migrations framework with PostgreSQL via Neon and SQLModel
+- [ ] T005 [P] Implement authentication/authorization framework using Better Auth with JWT
+- [ ] T006 [P] Setup API routing and middleware structure following the fixed contract: GET/POST/PUT/DELETE/PATCH /api/{user_id}/tasks
+- [ ] T007 Create base models/entities that all stories depend on (users, tasks with id, title, description, completed, owner_id)
 - [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T009 Setup environment configuration management with BETTER_AUTH_SECRET
+- [ ] T010 Ensure all API endpoints require JWT token authentication
+- [ ] T011 Implement token validation to ensure token_user_id == url_user_id for security
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
