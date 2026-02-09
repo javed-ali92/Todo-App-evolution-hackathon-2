@@ -16,7 +16,7 @@ def get_session():
 router = APIRouter()
 
 
-@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate, request: Request, session: Session = Depends(get_session)) -> Dict[str, str]:
     """
     Register a new user and return access token for immediate login
@@ -72,7 +72,7 @@ def register(user: UserCreate, request: Request, session: Session = Depends(get_
     }
 
 
-@router.post("/auth/login", response_model=Dict[str, str])
+@router.post("/login", response_model=Dict[str, str])
 def login(form_data: UserLogin, request: Request, session: Session = Depends(get_session)) -> Dict[str, str]:
     """
     Login with email and password
@@ -115,7 +115,7 @@ def login(form_data: UserLogin, request: Request, session: Session = Depends(get
     }
 
 
-@router.post("/auth/token", response_model=Dict[str, str])  # Alternative login endpoint for JSON requests
+@router.post("/token", response_model=Dict[str, str])  # Alternative login endpoint for JSON requests
 def login_json(login_data: UserLogin, session: Session = Depends(get_session)) -> Dict[str, str]:
     """
     Login with email and password via JSON request
@@ -157,7 +157,7 @@ def login_json(login_data: UserLogin, session: Session = Depends(get_session)) -
     }
 
 
-@router.get("/auth/me", response_model=UserRead)
+@router.get("/me", response_model=UserRead)
 def read_users_me(current_user: dict = Depends(get_current_user), session: Session = Depends(get_session)) -> UserRead:
     """
     Get current user info
@@ -187,7 +187,7 @@ def read_users_me(current_user: dict = Depends(get_current_user), session: Sessi
     )
 
 
-@router.post("/auth/logout")
+@router.post("/logout")
 def logout(
     request: Request,
     current_user: dict = Depends(get_current_user),
