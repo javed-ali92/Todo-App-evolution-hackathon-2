@@ -41,9 +41,11 @@ class TaskAPIClient {
   private baseUrl: string;
 
   constructor() {
-    // Use relative path to ensure requests go through Vite proxy during development
-    // In production, this will use the actual API server
-    this.baseUrl = '/api';
+    // Use environment variable for API base URL
+    // In production (Vercel), this should point to Hugging Face Space
+    // In development, this can use localhost or proxy
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sibtain92-todo-app-backend.hf.space';
+    this.baseUrl = `${apiBase}/api`;
   }
 
   // Get current token from localStorage

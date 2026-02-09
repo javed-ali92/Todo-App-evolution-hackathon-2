@@ -3,14 +3,8 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:8001/api/:path*',
-      },
-    ];
-  },
+  // Removed rewrites - frontend will call backend directly using NEXT_PUBLIC_API_BASE_URL
+  // This allows proper production deployment where frontend (Vercel) calls backend (Hugging Face)
 };
 
 module.exports = nextConfig;

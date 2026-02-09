@@ -34,14 +34,15 @@ class AuthAPIClient {
   private baseUrl: string;
 
   constructor() {
-    // Use relative path to ensure requests go through Vite proxy during development
-    // In production, this will use the actual API server
-    this.baseUrl = '/api';
+    // Use environment variable for API base URL
+    // In production (Vercel), this should point to Hugging Face Space
+    // In development, this can use localhost or proxy
+    this.baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sibtain92-todo-app-backend.hf.space';
   }
 
   // Register a new user
   async register(userData: UserRegistration): Promise<LoginResponse> {
-    const url = `${this.baseUrl}/auth/register`;
+    const url = `${this.baseUrl}/auth/signup`;
 
     const response = await fetch(url, {
       method: 'POST',
@@ -72,7 +73,7 @@ class AuthAPIClient {
 
   // Login with email and password
   async login(credentials: UserLogin): Promise<LoginResponse> {
-    const url = `${this.baseUrl}/auth/token`;  // Use the JSON endpoint
+    const url = `${this.baseUrl}/auth/login`;  // Use the login endpoint
 
     const response = await fetch(url, {
       method: 'POST',
