@@ -9,6 +9,8 @@ class SessionBase(SQLModel):
     expires_at: datetime = Field(nullable=False)
 
 class Session(SessionBase, table=True):
+    __tablename__ = "user_sessions"  # Avoid PostgreSQL reserved keyword "session"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_used_at: datetime = Field(default_factory=datetime.utcnow)

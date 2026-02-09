@@ -16,10 +16,10 @@ def get_session():
 router = APIRouter()
 
 
-@router.post("/auth/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, request: Request, session: Session = Depends(get_session)) -> UserRead:
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+def register(user: UserCreate, request: Request, session: Session = Depends(get_session)) -> Dict[str, str]:
     """
-    Register a new user
+    Register a new user and return access token for immediate login
 
     Args:
         user: User registration data
@@ -27,7 +27,7 @@ def register(user: UserCreate, request: Request, session: Session = Depends(get_
         session: Database session dependency
 
     Returns:
-        UserRead: Created user data without password
+        Dict: Access token, token type, and user info
 
     Raises:
         HTTPException: If user already exists
@@ -63,13 +63,13 @@ def register(user: UserCreate, request: Request, session: Session = Depends(get_
         expires_at=expires_at
     )
 
-    return UserRead.model_validate(db_user) if hasattr(UserRead, 'model_validate') else UserRead(
-        id=db_user.id,
-        username=db_user.username,
-        email=db_user.email,
-        created_at=db_user.created_at,
-        updated_at=db_user.updated_at
-    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": str(db_user.id),
+        "username": db_user.username,
+        "email": db_user.email
+    }
 
 
 @router.post("/auth/login", response_model=Dict[str, str])

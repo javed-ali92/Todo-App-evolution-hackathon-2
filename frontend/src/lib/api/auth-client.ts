@@ -26,6 +26,8 @@ interface LoginResponse {
   access_token: string;
   token_type: string;
   user_id: string;
+  username?: string;
+  email?: string;
 }
 
 class AuthAPIClient {
@@ -38,7 +40,7 @@ class AuthAPIClient {
   }
 
   // Register a new user
-  async register(userData: UserRegistration): Promise<User> {
+  async register(userData: UserRegistration): Promise<LoginResponse> {
     const url = `${this.baseUrl}/auth/register`;
 
     const response = await fetch(url, {
@@ -58,7 +60,14 @@ class AuthAPIClient {
       throw new Error(`Failed to register user: ${response.status} - ${response.statusText}. Details: ${errorText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+
+    // Store the token in localStorage (registration now returns a token for immediate login)
+    if (typeof window !== 'undefined' && result.access_token) {
+      localStorage.setItem('auth_token', result.access_token);
+    }
+
+    return result;
   }
 
   // Login with email and password

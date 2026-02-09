@@ -12,23 +12,26 @@ import logging
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def main():
-    print("Starting Todo API server on http://localhost:8000...")
+    # Use PORT environment variable with fallback to 7860 for Hugging Face Spaces
+    port = int(os.getenv("PORT", 7860))
+
+    print(f"Starting Todo API server on http://localhost:{port}...")
     print("Available endpoints:")
-    print("- GET  http://localhost:8000/ (Root)")
-    print("- GET  http://localhost:8000/docs (API Documentation)")
+    print(f"- GET  http://localhost:{port}/ (Root)")
+    print(f"- GET  http://localhost:{port}/docs (API Documentation)")
     print("")
     print("Authentication endpoints:")
-    print("- POST http://localhost:8000/api/auth/register (User Registration)")
-    print("- POST http://localhost:8000/api/auth/login (User Login - FORM DATA)")
-    print("- GET  http://localhost:8000/api/auth/me (Get Current User)")
+    print(f"- POST http://localhost:{port}/api/auth/register (User Registration)")
+    print(f"- POST http://localhost:{port}/api/auth/login (User Login - FORM DATA)")
+    print(f"- GET  http://localhost:{port}/api/auth/me (Get Current User)")
     print("")
     print("Task endpoints:")
-    print("- GET    http://localhost:8000/api/{user_id}/tasks (Get user's tasks)")
-    print("- POST   http://localhost:8000/api/{user_id}/tasks (Create task)")
-    print("- GET    http://localhost:8000/api/{user_id}/tasks/{id} (Get specific task)")
-    print("- PUT    http://localhost:8000/api/{user_id}/tasks/{id} (Update task)")
-    print("- DELETE http://localhost:8000/api/{user_id}/tasks/{id} (Delete task)")
-    print("- PATCH  http://localhost:8000/api/{user_id}/tasks/{id}/complete (Toggle completion)")
+    print(f"- GET    http://localhost:{port}/api/{{user_id}}/tasks (Get user's tasks)")
+    print(f"- POST   http://localhost:{port}/api/{{user_id}}/tasks (Create task)")
+    print(f"- GET    http://localhost:{port}/api/{{user_id}}/tasks/{{id}} (Get specific task)")
+    print(f"- PUT    http://localhost:{port}/api/{{user_id}}/tasks/{{id}} (Update task)")
+    print(f"- DELETE http://localhost:{port}/api/{{user_id}}/tasks/{{id}} (Delete task)")
+    print(f"- PATCH  http://localhost:{port}/api/{{user_id}}/tasks/{{id}}/complete (Toggle completion)")
     print("")
     print("Note: Most endpoints require authentication via JWT token in Authorization header")
     print("Example: Authorization: Bearer <your-jwt-token>")
@@ -37,10 +40,13 @@ def main():
 
     try:
         from src.main import app
+        # Use PORT environment variable with fallback to 7860 for Hugging Face Spaces
+        port = int(os.getenv("PORT", 7860))
+        print(f"Starting server on port {port}...")
         uvicorn.run(
             app,
             host="0.0.0.0",
-            port=8000,
+            port=port,
             reload=False,
             log_level="info"
         )

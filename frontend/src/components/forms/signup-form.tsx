@@ -27,24 +27,19 @@ export default function SignupForm() {
     setError('');
 
     try {
-      const user = await authClient.register({
+      // Register returns a token for immediate login
+      const registrationResponse = await authClient.register({
         username: data.username,
         email: data.email,
         password: data.password,
       });
 
-      // After registration, log the user in
-      const loginResponse = await authClient.login({
-        email: data.email,
-        password: data.password,
-      });
-
-      // Update auth context
+      // Update auth context with registration response
       login({
-        userId: loginResponse.user_id,
-        username: user.username,
-        email: user.email,
-        accessToken: loginResponse.access_token,
+        userId: registrationResponse.user_id,
+        username: registrationResponse.username || data.username,
+        email: registrationResponse.email || data.email,
+        accessToken: registrationResponse.access_token,
       });
 
       // Redirect to dashboard
