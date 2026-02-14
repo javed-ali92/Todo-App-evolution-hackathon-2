@@ -13,7 +13,7 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-router = APIRouter()
+router = APIRouter(prefix="/auth")
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

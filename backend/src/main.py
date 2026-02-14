@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database.database import engine, DATABASE_URL
 from .database.validation import test_connection, validate_schema
 from .models import user, task, session
+# Import new chatbot models
+from .models import conversation, message, rate_limit
 from .api.auth import router as auth_router
 from .api.tasks import router as tasks_router
+from .api.chat import router as chat_router
 from sqlmodel import SQLModel
 import os
 import logging
@@ -78,10 +81,16 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
+app.include_router(chat_router, tags=["chat"])
 
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+
+    # Initialize MCP tools
+    from .mcp.server import initialize_mcp_tools
+    initialize_mcp_tools()
+    logger.info("MCP tools initialized")
 
 @app.get("/")
 def read_root():

@@ -8,3 +8,11 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.12
 python-dotenv==1.0.1
 psycopg2-binary==2.9.9
+
+# AI Chatbot dependencies
+openai>=1.0.0
+mcp>=0.1.0
+dateparser>=1.1.0
+slowapi>=0.1.9
+tenacity>=8.0.0
+cryptography>=41.0.0

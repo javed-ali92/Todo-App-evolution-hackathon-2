@@ -1,0 +1,453 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "MCP Tools for Task Management",
+  "description": "Model Context Protocol tool definitions for AI agent to manage tasks",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "add_task",
+      "description": "Create a new task for the user. Use this when the user wants to add, create, or remember something.",
+      "parameters": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Task title or main action to be done",
+            "minLength": 1,
+            "maxLength": 200,
+            "examples": [
+              "Buy groceries",
+              "Finish project report",
+              "Call mom"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional detailed description or notes about the task",
+            "maxLength": 1000,
+            "examples": [
+              "Need milk, eggs, bread, and vegetables",
+              "Complete sections 3-5 and proofread"
+            ]
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Optional due date in YYYY-MM-DD format. Parse natural language dates before calling this tool.",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "examples": [
+              "2026-02-14",
+              "2026-03-01"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["Low", "Medium", "High"],
+            "description": "Task priority level. Default to Medium if not specified.",
+            "default": "Medium"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional tags or categories for the task",
+            "maxItems": 10,
+            "examples": [
+              ["shopping", "groceries"],
+              ["work", "urgent"]
+            ]
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the task was created successfully"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the newly created task"
+          },
+          "task": {
+            "type": "object",
+            "description": "Complete task object with all fields"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if success is false"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "title": "Buy groceries",
+            "due_date": "2026-02-14",
+            "priority": "High"
+          },
+          "output": {
+            "success": true,
+            "task_id": 123,
+            "task": {
+              "id": 123,
+              "title": "Buy groceries",
+              "description": null,
+              "due_date": "2026-02-14",
+              "priority": "High",
+              "completed": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "list_tasks",
+      "description": "List user's tasks with optional filters. Use this when the user wants to see, view, or check their tasks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "type": "boolean",
+            "description": "Filter by completion status. True for completed tasks, false for incomplete, omit for all tasks."
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks by specific due date (YYYY-MM-DD)",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "due_before": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks due before this date (YYYY-MM-DD)",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["Low", "Medium", "High"],
+            "description": "Filter by priority level"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Filter by tags (returns tasks matching any of these tags)"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of tasks to return",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the query was successful"
+          },
+          "tasks": {
+            "type": "array",
+            "description": "Array of task objects matching the filters",
+            "items": {
+              "type": "object"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of tasks returned"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if success is false"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "completed": false,
+            "due_date": "2026-02-14"
+          },
+          "output": {
+            "success": true,
+            "tasks": [
+              {
+                "id": 123,
+                "title": "Buy groceries",
+                "due_date": "2026-02-14",
+                "priority": "High",
+                "completed": false
+              }
+            ],
+            "count": 1
+          }
+        },
+        {
+          "input": {},
+          "output": {
+            "success": true,
+            "tasks": [],
+            "count": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "complete_task",
+      "description": "Mark a task as complete or incomplete. Use this when the user wants to mark, complete, finish, or check off a task.",
+      "parameters": {
+        "type": "object",
+        "required": ["task_id"],
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the task to mark as complete/incomplete",
+            "minimum": 1
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Completion status. True to mark complete, false to mark incomplete. Default is true.",
+            "default": true
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the operation was successful"
+          },
+          "task": {
+            "type": "object",
+            "description": "Updated task object"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if success is false"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "task_id": 123,
+            "completed": true
+          },
+          "output": {
+            "success": true,
+            "task": {
+              "id": 123,
+              "title": "Buy groceries",
+              "completed": true
+            }
+          }
+        },
+        {
+          "input": {
+            "task_id": 999
+          },
+          "output": {
+            "success": false,
+            "error": "Task not found"
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_task",
+      "description": "Update task details like title, description, due date, or priority. Use this when the user wants to change, modify, or update a task.",
+      "parameters": {
+        "type": "object",
+        "required": ["task_id"],
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the task to update",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "New task title",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "New task description",
+            "maxLength": 1000
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "New due date in YYYY-MM-DD format",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["Low", "Medium", "High"],
+            "description": "New priority level"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "New tags (replaces existing tags)"
+          }
+        },
+        "minProperties": 2,
+        "description": "At least one field besides task_id must be provided"
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the update was successful"
+          },
+          "task": {
+            "type": "object",
+            "description": "Updated task object with all fields"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if success is false"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "task_id": 123,
+            "due_date": "2026-02-15",
+            "priority": "Medium"
+          },
+          "output": {
+            "success": true,
+            "task": {
+              "id": 123,
+              "title": "Buy groceries",
+              "due_date": "2026-02-15",
+              "priority": "Medium",
+              "completed": false
+            }
+          }
+        },
+        {
+          "input": {
+            "task_id": 123,
+            "title": "Buy groceries and cook dinner"
+          },
+          "output": {
+            "success": true,
+            "task": {
+              "id": 123,
+              "title": "Buy groceries and cook dinner",
+              "completed": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "delete_task",
+      "description": "Delete a task permanently. Use this when the user wants to delete, remove, or get rid of a task. Always confirm before deleting.",
+      "parameters": {
+        "type": "object",
+        "required": ["task_id"],
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the task to delete",
+            "minimum": 1
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the deletion was successful"
+          },
+          "message": {
+            "type": "string",
+            "description": "Confirmation message"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if success is false"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "task_id": 123
+          },
+          "output": {
+            "success": true,
+            "message": "Task deleted successfully"
+          }
+        },
+        {
+          "input": {
+            "task_id": 999
+          },
+          "output": {
+            "success": false,
+            "error": "Task not found"
+          }
+        }
+      ]
+    }
+  ],
+  "context": {
+    "user_id": {
+      "type": "integer",
+      "description": "User ID is automatically injected into tool execution context from JWT token. Tools should not accept user_id as a parameter.",
+      "required": true
+    }
+  },
+  "error_handling": {
+    "not_found": {
+      "description": "When a task_id doesn't exist or doesn't belong to the user",
+      "response": {
+        "success": false,
+        "error": "Task not found"
+      }
+    },
+    "validation_error": {
+      "description": "When parameters fail validation",
+      "response": {
+        "success": false,
+        "error": "Validation error: [specific issue]"
+      }
+    },
+    "database_error": {
+      "description": "When database operation fails",
+      "response": {
+        "success": false,
+        "error": "Database error occurred"
+      }
+    }
+  },
+  "best_practices": [
+    "Always parse natural language dates (tomorrow, next Friday) into YYYY-MM-DD format before calling tools",
+    "When user refers to 'the first one' or 'task #2', use context from previous list_tasks call to resolve task_id",
+    "For ambiguous requests, ask clarifying questions rather than guessing",
+    "Confirm destructive operations (delete) before executing",
+    "Provide clear feedback about what action was taken",
+    "If a tool call fails, explain the error in natural language and suggest alternatives"
+  ]
+}
