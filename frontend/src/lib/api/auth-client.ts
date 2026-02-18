@@ -42,7 +42,7 @@ class AuthAPIClient {
 
   // Register a new user
   async register(userData: UserRegistration): Promise<LoginResponse> {
-    const url = `${this.baseUrl}/auth/signup`;
+    const url = `${this.baseUrl}/api/auth/register`;
 
     const response = await fetch(url, {
       method: 'POST',
@@ -73,7 +73,7 @@ class AuthAPIClient {
 
   // Login with email and password
   async login(credentials: UserLogin): Promise<LoginResponse> {
-    const url = `${this.baseUrl}/auth/login`;  // Use the login endpoint
+    const url = `${this.baseUrl}/api/auth/login`;  // Use the login endpoint
 
     const response = await fetch(url, {
       method: 'POST',
@@ -109,7 +109,7 @@ class AuthAPIClient {
       throw new Error('No authentication token found');
     }
 
-    const url = `${this.baseUrl}/auth/me`;
+    const url = `${this.baseUrl}/api/auth/me`;
 
     const response = await fetch(url, {
       method: 'GET',

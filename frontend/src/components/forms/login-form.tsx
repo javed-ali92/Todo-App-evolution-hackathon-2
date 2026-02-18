@@ -64,6 +64,7 @@ export default function LoginForm() {
         <input
           id="email"
           type="email"
+          suppressHydrationWarning
           {...register('email', {
             required: 'Email is required',
             pattern: {

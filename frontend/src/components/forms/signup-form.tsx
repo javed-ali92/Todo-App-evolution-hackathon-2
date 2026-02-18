@@ -93,6 +93,7 @@ export default function SignupForm() {
         <input
           id="email"
           type="email"
+          suppressHydrationWarning
           {...register('email', {
             required: 'Email is required',
             pattern: {
