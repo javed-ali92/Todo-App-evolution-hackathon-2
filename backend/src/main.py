@@ -8,6 +8,7 @@ from .models import conversation, message, rate_limit
 from .api.auth import router as auth_router
 from .api.tasks import router as tasks_router
 from .api.chat import router as chat_router
+from .api.chat_sdk import router as chat_sdk_router
 from sqlmodel import SQLModel
 import os
 import logging
@@ -82,6 +83,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
 app.include_router(chat_router, tags=["chat"])
+app.include_router(chat_sdk_router, tags=["chat-sdk"])
 
 @app.on_event("startup")
 def on_startup():
@@ -91,6 +93,45 @@ def on_startup():
     from .mcp.server import initialize_mcp_tools
     initialize_mcp_tools()
     logger.info("MCP tools initialized")
+
+    # Validate AI provider configuration
+    validate_ai_provider()
+
+
+def validate_ai_provider():
+    """
+    Validate that at least one AI provider is configured.
+
+    Checks for valid API keys and logs which provider will be used.
+    Raises RuntimeError if no valid provider is found.
+    """
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+
+    # Check if keys are set and not placeholder values
+    has_gemini = gemini_key and gemini_key != "sk-your-openai-api-key-here" and not gemini_key.startswith("sk-your")
+    has_openai = openai_key and openai_key != "sk-your-openai-api-key-here" and not openai_key.startswith("sk-your")
+
+    if has_gemini:
+        model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        logger.info(f"AI Provider: Gemini (model: {model})")
+        return
+
+    if has_openai:
+        model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+        logger.info(f"AI Provider: OpenAI (model: {model})")
+        return
+
+    # No valid provider found
+    logger.error("AI Provider Configuration Error")
+    logger.error("  No valid API key found for AI chatbot")
+    logger.error("  Please set one of the following in .env:")
+    logger.error("    - GEMINI_API_KEY (recommended)")
+    logger.error("    - OPENAI_API_KEY")
+    logger.error("  Chatbot features will not work until configured")
+    raise RuntimeError(
+        "AI provider not configured. Set GEMINI_API_KEY or OPENAI_API_KEY in .env file."
+    )
 
 @app.get("/")
 def read_root():
