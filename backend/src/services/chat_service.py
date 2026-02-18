@@ -10,7 +10,7 @@ from datetime import datetime
 from .conversation_service import ConversationService
 from .message_service import MessageService
 from ..models.message import MessageSender
-from ..chatbot_agents.sdk_agent import SDKTaskAgent
+from ..chatbot_agents.production_agent import ProductionSDKAgent
 from ..mcp.server import mcp_server
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class ChatService:
         self.session = session
         self.conversation_service = ConversationService(session)
         self.message_service = MessageService(session)
-        self.agent = SDKTaskAgent(mcp_server)
+        self.agent = ProductionSDKAgent(mcp_server)
 
     def process_message(
         self,
