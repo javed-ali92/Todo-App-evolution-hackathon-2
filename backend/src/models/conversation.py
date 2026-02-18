@@ -49,7 +49,7 @@ class Conversation(SQLModel, table=True):
         index=True  # For sorting by activity
     )
 
-    # Optional metadata
+    # Optional metadata (stores OpenAI thread_id and assistant_id)
     meta: Optional[dict] = Field(
         default=None,
         sa_column=Column(JSON)

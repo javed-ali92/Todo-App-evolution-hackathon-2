@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from "react";
 import { sendMessage, ChatResponse } from "@/lib/api/chat-client";
+import { useAuth } from "@/app/providers/auth-provider";
 
 export interface Message {
   id: string;
@@ -34,6 +35,7 @@ export function useChat(): UseChatReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const { session } = useAuth();
 
   /**
    * Send a user message to the chatbot.
@@ -44,16 +46,16 @@ export function useChat(): UseChatReturn {
         return;
       }
 
-      // Get authentication details
-      const token = localStorage.getItem("token");
-      const userIdStr = localStorage.getItem("userId");
+      // Get authentication details from AuthContext
+      const token = session.accessToken;
+      const userId = session.userId;
 
-      if (!token || !userIdStr) {
+      if (!token || !userId || !session.isLoggedIn) {
         setError("Not authenticated. Please log in again.");
         return;
       }
 
-      const userId = parseInt(userIdStr, 10);
+      const userIdNum = parseInt(userId, 10);
 
       // Add user message to UI immediately
       const userMessage: Message = {
@@ -70,7 +72,7 @@ export function useChat(): UseChatReturn {
       try {
         // Send message to API
         const response: ChatResponse = await sendMessage(
-          userId,
+          userIdNum,
           messageText,
           conversationId,
           token
@@ -109,7 +111,7 @@ export function useChat(): UseChatReturn {
         setIsLoading(false);
       }
     },
-    [conversationId]
+    [conversationId, session]
   );
 
   /**

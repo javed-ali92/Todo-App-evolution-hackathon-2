@@ -10,7 +10,7 @@ from datetime import datetime
 from .conversation_service import ConversationService
 from .message_service import MessageService
 from ..models.message import MessageSender
-from ..agents.task_agent import TaskAgent
+from ..chatbot_agents.sdk_agent import SDKTaskAgent
 from ..mcp.server import mcp_server
 
 logger = logging.getLogger(__name__)
@@ -21,14 +21,14 @@ class ChatService:
     Main service for chat operations.
 
     Orchestrates conversation management, message persistence,
-    and agent execution.
+    and agent execution using OpenAI Agents SDK.
     """
 
     def __init__(self, session: Session):
         self.session = session
         self.conversation_service = ConversationService(session)
         self.message_service = MessageService(session)
-        self.agent = TaskAgent(mcp_server)
+        self.agent = SDKTaskAgent(mcp_server)
 
     def process_message(
         self,
@@ -49,29 +49,32 @@ class ChatService:
         Returns:
             Dictionary with conversation_id, bot message, and task_operation details
         """
+        conversation = None
+        conversation_created = False
+
         try:
             # Step 1: Get or create conversation
+            logger.info(f"[SERVICE_START] user_id={user_id}, conversation_id={conversation_id}, message_length={len(message)}")
+
             if conversation_id:
+                logger.debug(f"[SERVICE] Fetching existing conversation {conversation_id}")
                 conversation = self.conversation_service.get_conversation(
                     conversation_id, user_id
                 )
                 if not conversation:
-                    logger.warning(f"Conversation {conversation_id} not found, creating new one")
+                    logger.warning(f"[SERVICE] Conversation {conversation_id} not found, creating new one")
                     conversation = self.conversation_service.create_conversation(user_id)
+                    conversation_created = True
+                else:
+                    logger.debug(f"[SERVICE] Found existing conversation {conversation_id}")
             else:
+                logger.debug(f"[SERVICE] Creating new conversation for user {user_id}")
                 conversation = self.conversation_service.create_conversation(user_id)
+                conversation_created = True
+                logger.info(f"[SERVICE] Created new conversation {conversation.id}")
 
-            # Step 2: Load conversation history for context
-            conversation_history = self.load_conversation_history(conversation.id)
-
-            # Step 3: Set user context in MCP server
-            mcp_server.set_user_context(user_id)
-
-            # Step 4: Execute agent with conversation context
-            logger.info(f"Processing message for user {user_id} in conversation {conversation.id}")
-            agent_response = self.agent.process_message(message, conversation_history)
-
-            # Step 5: Save user message
+            # Step 2: Save user message IMMEDIATELY (before agent processing)
+            logger.debug(f"[SERVICE] Saving user message to conversation {conversation.id}")
             self.message_service.create_message(
                 conversation_id=conversation.id,
                 sender=MessageSender.USER,
@@ -79,10 +82,29 @@ class ChatService:
                 meta=None
             )
 
+            # Step 3: Load conversation history for context
+            logger.debug(f"[SERVICE] Loading conversation history for {conversation.id}")
+            conversation_history = self.load_conversation_history(conversation.id)
+            logger.debug(f"[SERVICE] Loaded {len(conversation_history)} messages from history")
+
+            # Step 4: Set user context in MCP server
+            logger.debug(f"[SERVICE] Setting user context in MCP server: user_id={user_id}")
+            mcp_server.set_user_context(user_id)
+
+            # Set user context for SDK agent
+            from ..chatbot_agents.sdk_agent import UserContextManager
+            UserContextManager.set_user_id(user_id)
+
+            # Step 5: Execute agent with conversation context
+            logger.info(f"[SERVICE] Calling agent.process_message_sync for user {user_id}")
+            agent_response = self.agent.process_message_sync(message, conversation_history)
+            logger.info(f"[SERVICE] Agent returned response, keys={list(agent_response.keys())}")
+
             # Step 6: Save bot response
             bot_message = agent_response.get("message", "I'm not sure how to help with that.")
             task_operation = agent_response.get("task_operation")
 
+            logger.debug(f"[SERVICE] Saving bot message to conversation {conversation.id}, has_task_operation={task_operation is not None}")
             self.message_service.create_message(
                 conversation_id=conversation.id,
                 sender=MessageSender.BOT,
@@ -93,9 +115,11 @@ class ChatService:
             )
 
             # Step 7: Update conversation timestamp
+            logger.debug(f"[SERVICE] Updating conversation timestamp for {conversation.id}")
             self.conversation_service.update_last_message_at(conversation.id, user_id)
 
             # Step 8: Return response
+            logger.info(f"[SERVICE_SUCCESS] Returning response for conversation {conversation.id}")
             return {
                 "conversation_id": str(conversation.id),
                 "message": bot_message,
@@ -103,9 +127,32 @@ class ChatService:
             }
 
         except Exception as e:
-            logger.error(f"Error processing message: {str(e)}")
+            logger.error(f"[SERVICE_ERROR] Exception in chat service: {type(e).__name__}: {str(e)}")
+            logger.exception(f"[SERVICE_ERROR] Full traceback:")
+
+            # Rollback: Delete conversation if it was just created and has no messages
+            if conversation and conversation_created:
+                try:
+                    logger.warning(f"[SERVICE_ROLLBACK] Attempting to clean up conversation {conversation.id}")
+                    # Check if conversation has any messages
+                    from sqlmodel import select
+                    from ..models.message import Message
+                    msg_count = len(self.session.exec(
+                        select(Message).where(Message.conversation_id == conversation.id)
+                    ).all())
+
+                    if msg_count == 0:
+                        # Delete empty conversation
+                        self.session.delete(conversation)
+                        self.session.commit()
+                        logger.info(f"[SERVICE_ROLLBACK] Deleted empty conversation {conversation.id}")
+                    else:
+                        logger.debug(f"[SERVICE_ROLLBACK] Conversation {conversation.id} has {msg_count} messages, keeping it")
+                except Exception as rollback_error:
+                    logger.error(f"[SERVICE_ROLLBACK_ERROR] Failed to rollback: {str(rollback_error)}")
+
             return {
-                "conversation_id": str(conversation_id) if conversation_id else None,
+                "conversation_id": str(conversation.id) if conversation else None,
                 "message": "I'm having trouble processing your request right now. Please try again or use the task dashboard.",
                 "task_operation": None,
                 "error": str(e)

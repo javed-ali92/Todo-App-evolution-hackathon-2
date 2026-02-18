@@ -141,8 +141,13 @@ async def send_chat_message(
         HTTPException: 401 if unauthorized, 403 if forbidden, 429 if rate limited
     """
     try:
-        # Step 1: Verify JWT token
+        # Step 1: Log incoming request
+        logger.info(f"[CHAT_REQUEST] user_id={user_id}, message_length={len(request.message)}, conversation_id={request.conversation_id}")
+        logger.debug(f"[CHAT_REQUEST_BODY] {request.model_dump()}")
+
+        # Step 2: Verify JWT token
         if not authorization or not authorization.startswith("Bearer "):
+            logger.warning(f"[AUTH_FAILED] Missing or invalid authorization header for user {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing or invalid authorization header"
@@ -152,37 +157,57 @@ async def send_chat_message(
         token_payload = verify_token(token)
 
         if not token_payload:
+            logger.warning(f"[AUTH_FAILED] Invalid or expired token for user {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired token"
             )
 
-        token_user_id = token_payload.get("user_id")
+        token_user_id = token_payload.get("sub")  # JWT stores user_id in "sub" field
 
-        # Step 2: Verify user_id matches token
+        if not token_user_id:
+            logger.error(f"[AUTH_FAILED] Token missing user information for user {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing user information"
+            )
+
+        # Convert to int for comparison
+        token_user_id = int(token_user_id)
+        logger.debug(f"[AUTH_SUCCESS] user_id={user_id}, token_user_id={token_user_id}")
+
+        # Step 3: Verify user_id matches token
         verify_user_access(user_id, token_user_id)
+        logger.debug(f"[ACCESS_GRANTED] User {user_id} authorized")
 
-        # Step 3: Check rate limit
+        # Step 4: Check rate limit
+        logger.debug(f"[RATE_LIMIT_CHECK] Checking rate limit for user {user_id}")
         rate_limit_service = RateLimitService(session)
         is_allowed, seconds_until_reset = rate_limit_service.check_rate_limit(
             user_id, "/api/chat"
         )
 
         if not is_allowed:
+            logger.warning(f"[RATE_LIMIT_EXCEEDED] User {user_id} exceeded rate limit, retry in {seconds_until_reset}s")
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Rate limit exceeded. Try again in {seconds_until_reset} seconds.",
                 headers={"Retry-After": str(seconds_until_reset)}
             )
 
-        # Step 4: Process chat message
+        logger.debug(f"[RATE_LIMIT_OK] User {user_id} within rate limit")
+
+        # Step 5: Process chat message
+        logger.info(f"[CHAT_PROCESSING] Starting message processing for user {user_id}")
         chat_service = ChatService(session)
 
         conversation_id = None
         if request.conversation_id:
             try:
                 conversation_id = uuid.UUID(request.conversation_id)
+                logger.debug(f"[CONVERSATION] Using existing conversation {conversation_id}")
             except ValueError:
+                logger.error(f"[CONVERSATION_ERROR] Invalid conversation_id format: {request.conversation_id}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid conversation_id format"
@@ -194,7 +219,32 @@ async def send_chat_message(
             conversation_id=conversation_id
         )
 
-        # Step 5: Return response
+        logger.debug(f"[CHAT_RESULT] result_keys={list(result.keys())}, has_error={'error' in result}")
+
+        # Step 6: Check for errors in result
+        if "error" in result or result.get("conversation_id") is None:
+            # API error occurred, log details and return user-friendly error message
+            error_message = result.get("message", "An error occurred processing your message")
+            error_details = result.get("error", "Unknown error")
+            logger.error(f"[CHAT_ERROR] user_id={user_id}, error={error_details}, message={error_message}")
+
+            # Check if it's a quota error
+            if "429" in str(error_details) or "quota" in str(error_details).lower():
+                logger.error(f"[API_QUOTA_EXCEEDED] Gemini API quota exhausted")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="AI service temporarily unavailable due to quota limits. Please try again later."
+                )
+
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=error_message
+            )
+
+        # Step 7: Return successful response
+        logger.info(f"[CHAT_SUCCESS] user_id={user_id}, conversation_id={result['conversation_id']}")
+        logger.debug(f"[CHAT_RESPONSE] message_length={len(result['message'])}, has_task_operation={result.get('task_operation') is not None}")
+
         return ChatResponse(
             conversation_id=result["conversation_id"],
             message=result["message"],
@@ -284,7 +334,16 @@ async def list_conversations(
                 detail="Invalid or expired token"
             )
 
-        token_user_id = token_payload.get("user_id")
+        token_user_id = token_payload.get("sub")  # JWT stores user_id in "sub" field
+
+        if not token_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing user information"
+            )
+
+        # Convert to int for comparison
+        token_user_id = int(token_user_id)
         verify_user_access(user_id, token_user_id)
 
         # Validate parameters
@@ -406,7 +465,16 @@ async def get_conversation_messages(
                 detail="Invalid or expired token"
             )
 
-        token_user_id = token_payload.get("user_id")
+        token_user_id = token_payload.get("sub")  # JWT stores user_id in "sub" field
+
+        if not token_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing user information"
+            )
+
+        # Convert to int for comparison
+        token_user_id = int(token_user_id)
         verify_user_access(user_id, token_user_id)
 
         # Validate conversation_id

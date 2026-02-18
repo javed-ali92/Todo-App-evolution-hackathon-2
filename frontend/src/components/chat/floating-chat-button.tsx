@@ -1,21 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useAuth } from "@/app/providers/auth-provider";
 import ChatModal from "./chat-modal";
 
 export default function FloatingChatButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    // Check authentication status
-    const token = localStorage.getItem("token");
-    const userId = localStorage.getItem("userId");
-    setIsAuthenticated(!!(token && userId));
-  }, []);
+  const { session } = useAuth();
 
   // Don't show button if not authenticated
-  if (!isAuthenticated) {
+  if (!session.isLoggedIn) {
     return null;
   }
 
